@@ -13,11 +13,12 @@ import re
 import sys
 from tabulate import tabulate
 import operator
+import argparse
 
 
 # "Configuration", because the interpreter is a better config file reader than
 # one that I will ever write.
-FILETYPES = [".java", ".jsp", ".sql", ".tag", ".md"]
+FILETYPES = [".py", ".java", ".jsp", ".sql", ".tag", ".md"]
 
 # --------------
 # Stat functions
@@ -57,7 +58,7 @@ def contrib_percentage(names, filetypes):
     results.sort(key=lambda x: x[1])
     results = reversed(results)
 
-    print "\nTotal lines of code per person out of the total " + str(total) + " lines in the project:\n"
+    print "\n[-dc] Total lines of code per person out of the total " + str(total) + " lines in the project:\n"
     print tabulate(results, headers=["name", "lines", "%"], tablefmt='orgtbl')
 
 def lines_per_commit(FILETYPES):
@@ -129,13 +130,12 @@ def total_additions_deletions(FILETYPES):
 
     tablist = []
     for a in authors:
-        print a
         tablist.append([a, authors[a]])
 
     tablist.sort(key=lambda x: x[1])
     tablist = reversed(tablist)
 
-    print "\n\nSum of all additions and deletions:\n"
+    print "\n\n[-dt] Sum of all additions and deletions:\n"
     print tabulate(tablist, headers=["name", "add/del"], tablefmt='orgtbl')
 
 
@@ -162,35 +162,35 @@ def avg_lines_per_commit(FILETYPES):
 
     tablist.sort(key=lambda x: x[3])
 
-    print "\n\nNumber of commits, additions/deletions and lines/commit:\n"
+    print "\n\n[-da] Number of commits, additions/deletions and lines/commit:\n"
     print tabulate(tablist, headers=["name", "commits", "add+del", "l/c"], tablefmt='orgtbl')
 
 
 def is_correct_commit_msg(msg):
     # First letter must be capital
     if msg[0] == msg[0].lower():
-        return False
+        return "First letter must be capital."
 
     # Last character cannot be punctuation
     last_c = msg[len(msg) - 1]
     if last_c in "!?.,(":
-        return False
+        return "Last character must not be punctuation."
 
     # Second letter cannot be caps (prevents all caps msgs)
     if msg[1] == msg[1].upper():
-        return False
+        return "Wrong capitalization."
 
     # First word must be imperative (can't be checked with 100% certainty)
     first_w = msg.split(" ")[0]
     if first_w[len(first_w) - 2] + first_w[len(first_w) - 1] == "ed" and \
             first_w not in ["Need"]:
-        return False
+        return "First word must be imperative."
 
     # Message must not be longer than 50 characters
-    if len(msg) > 50:
-        return False
+    if len(msg.split("\n")[0]) > 50:
+        return "Subject line must not be longer than 50 characters."
 
-    return True
+    return "Correct."
 
 
 def get_author(hash):
@@ -201,7 +201,8 @@ def get_author(hash):
             return line.split(": ")[1].split("<")[0]
 
 def get_message(hash):
-    pass
+    msg = os.popen("git log " + hash + " -n 1 | grep \"    \"").read()
+    return msg.replace("    ", "")
 
 def wrong_commit_msgs(NAMES):
     # commits_raw = os.popen("git log --oneline | grep -v Merge").read().split("\n")
@@ -219,31 +220,25 @@ def wrong_commit_msgs(NAMES):
     #     commits[hash] = msg
 
     commits = {} # {hash: msg}
+    mistakes = {} # {mistake: count}
+    mistakes["First letter must be capital."]                       = 0
+    mistakes["Last character must not be punctuation."]             = 0
+    mistakes["Wrong capitalization."]                               = 0
+    mistakes["First word must be imperative."]                      = 0
+    mistakes["Subject line must not be longer than 50 characters."] = 0
 
-    hashes = map(str.strip, os.popen("git log | grep commit").read().split("commit"))
+    hashes = map(str.strip, os.popen("git log --oneline | grep -v Merge").read().split("\n"))
+
+    for i in range(0, len(hashes)):
+        hashes[i] = hashes[i].split(" ")[0]
 
     for hash in hashes:
-        print hash
+        msg = get_message(hash)
 
-    commits_raw = os.popen("git log | grep \"    \\|commit\"").read()
-
-    return 0
-
-    for c in commits_raw:
-        if "Merge" in c:
+        if "Merge" in msg:
             continue
-        lines = c.split("\n")
 
-        strmsg = ""
-        for l in lines[1:]:
-            strmsg += l.strip() + "\n"
-
-        commits[lines[0]] = strmsg
-
-    for c in commits:
-        print c, commits[c]
-    # je was bezig de volledige commit message netjes te krijgen zodat je ook op andere
-    # regels kan checken wat betreft de body en subject en alles
+        commits[hash] = msg
 
     authors = {} # {name: [good, bad]}
 
@@ -254,30 +249,69 @@ def wrong_commit_msgs(NAMES):
         msg = commits[commit]
         author = get_author(commit)
 
-        if not is_correct_commit_msg(msg):
-            authors[author][1] += 1
+        correctness = is_correct_commit_msg(msg)
+
+        if "Correct." in correctness:
+            authors[author][0] += 1 # correct commit
         else:
-            authors[author][0] += 1
+            authors[author][1] += 1 # wrong commit
+            mistakes[correctness] += 1
+            if args.wrong:
+                print commit + " " + author + ":"
+                print "--> " + correctness + "\n"
+                print msg
+
 
     tablist = []
     for a in authors:
         correct = authors[a][0]
         wrong =  authors[a][1]
+        ratio = 0
         if wrong == 0:
-            wrong = 0.0001
-        tablist.append([a, correct, round(wrong, 0), round(float(correct) / wrong, 2)])
+            ratio = "inf"
+        else:
+            ratio = round(float(correct) / wrong, 2)
+
+        tablist.append([a, correct, round(wrong, 0), ratio])
 
     tablist.sort(key=lambda x: x[3])
     tablist = reversed(tablist)
 
-    print "\n\nNumber of correct commits, incorrect commits, and ratio (higher is better):"
+    print "\n\n[-dm] Number of correct commits, incorrect commits, and ratio (higher is better):"
     print "Since the correctness of a commit message depends on some language rules, this occasionally gives some false positives\n"
     print tabulate(tablist, headers=["name", "correct", "wrong", "ratio"], tablefmt='orgtbl')
+
+    mistakelist = []
+    for mistake in mistakes:
+        mistakelist.append([mistake, mistakes[mistake]])
+
+    mistakelist.sort(key = lambda x: x[1])
+    mistakelist = reversed(mistakelist)
+
+    print "\n\nMistakes made in commit messages in this project:\n"
+    print tabulate(mistakelist, headers=["mistake", "count"], tablefmt='orgtbl')
 
 
 # -----------
 # Preparation
 # -----------
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("-w", "--wrong", help="display for all users their erroneous commits",
+                    action="store_true")
+parser.add_argument("-dc", "--disable-contrib",
+    help="disable contribution to end product percentage stat", action="store_true")
+parser.add_argument("-dt", "--disable-totals",
+    help="disable total additions and deletions stat", action="store_true")
+parser.add_argument("-da", "--disable-average",
+    help="disable average lines per commit stat", action="store_true")
+parser.add_argument("-dm", "--disable-messages",
+    help="disabel message analyzer", action="store_true")
+
+args = parser.parse_args()
+
+print ""
 
 if not os.popen("git rev-parse --is-inside-work-tree").read().startswith("true"):
     sys.exit()
@@ -302,7 +336,14 @@ for author in os.popen("git log | grep Author").read().split("\n"):
 # Execution
 # ---------
 
-#contrib_percentage(NAMES, FILETYPES)
-#total_additions_deletions(FILETYPES)
-#avg_lines_per_commit(FILETYPES)
-wrong_commit_msgs(NAMES)
+if not args.disable_contrib:
+    contrib_percentage(NAMES, FILETYPES)
+
+if not args.disable_totals:
+    total_additions_deletions(FILETYPES)
+
+if not args.disable_average:
+    avg_lines_per_commit(FILETYPES)
+
+if not args.disable_messages:
+    wrong_commit_msgs(NAMES)
