@@ -1,0 +1,3 @@
+#!/bin/bash
+
+gnome-terminal --title="Haskell" -e "ghci /home/pieter/Coding/haskell/f.hs"

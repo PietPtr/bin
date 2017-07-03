@@ -1,0 +1,11 @@
+#!/bin/bash
+
+#feh --bg-scale /home/pieter/Pictures/SpaceviewLive/photos/DSCOVR-edited.png
+nitrogen --restore
+
+cd /home/pieter/Pictures/SpaceviewLive
+python DSCOVR.py
+
+echo "Resetting wallpaper"
+#feh --bg-scale /home/pieter/Pictures/SpaceviewLive/photos/DSCOVR-edited.png
+nitrogen --restore

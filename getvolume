@@ -1,0 +1,15 @@
+#!/usr/bin/python
+
+import os
+import sys
+
+raw = os.popen("amixer get Master | grep 'Mono:'").read()
+
+if "[off]" in raw:
+    print "-"
+
+split = raw.split(" ")[5]
+strip = ((split.replace("[","")).replace("]", "")).replace("%", "")
+
+
+print strip

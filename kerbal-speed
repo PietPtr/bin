@@ -1,0 +1,7 @@
+#!/bin/bash
+
+aoeu
+cd /home/pieter/Games/KSP/KSP1.1/
+/home/pieter/Games/KSP/KSP1.1/KSP.x86_64 &
+stopwatch
+asdf

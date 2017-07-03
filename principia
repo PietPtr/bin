@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd /home/pieter/Games/KSP/PrincipiaRSS/
+./KSP.x86_64

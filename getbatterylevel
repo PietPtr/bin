@@ -1,0 +1,52 @@
+#!/usr/bin/python
+
+import os
+import sys
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+# Get the data and remove all the things we don't need
+rawData = os.popen("upower -i /org/freedesktop/UPower/devices/battery_BAT0 | grep percentage").read()
+data = rawData.replace('\n', '')
+dataList = data.split(' ')
+
+isChargingRaw = os.popen("upower -i /org/freedesktop/UPower/devices/battery_BAT0 | grep state").read()
+isCharging = isChargingRaw.replace('\n', '').replace(' ', '')
+isCharging =  isCharging.split(':')[1] == "charging"
+
+# Print it out
+batlvl = dataList[len(dataList) - 1]
+battery = batlvl.replace("%","");
+batlvl = int(round(int(battery) / 10.0, 0))
+#batlvl = sys.argv[1]
+
+
+out = battery + "% [<fc="
+
+if isCharging:
+    out += "#61ce3c"
+else:
+    if batlvl > 5:
+        out += "#61ce3c"
+    elif batlvl > 2:
+        out += "#fbde2d"
+    else:
+        out += "#ff6400"
+
+out += ">"
+
+for i in range(0, batlvl):
+    out += "|"
+for i in range(0, 10 - batlvl):
+    out += " "
+out += "</fc>]"
+print out
+#print "5%"

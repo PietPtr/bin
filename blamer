@@ -1,0 +1,308 @@
+#!/usr/bin/python
+
+# use python 2
+# install tabulate
+
+"""
+TODO:
+    ignore empty lines
+
+"""
+import os
+import re
+import sys
+from tabulate import tabulate
+import operator
+
+
+# "Configuration", because the interpreter is a better config file reader than
+# one that I will ever write.
+FILETYPES = [".java", ".jsp", ".sql", ".tag", ".md"]
+
+# --------------
+# Stat functions
+# --------------
+
+def is_valid_filetype(file):
+    for ft in FILETYPES:
+        if ft in file:
+            return True
+    return False
+
+def contrib_percentage(names, filetypes):
+    files = []
+
+    for ft in filetypes:
+        files += os.popen("find . -type f -name \"*" + ft + "\"").read().split("\n")
+
+    files = filter(None, files)
+
+    blame = ""
+
+    for f in files:
+        command = "git blame " + f
+        blame += os.popen(command).read()
+
+    total = len(blame.split("\n"))
+
+    results = []
+
+    for name in names:
+        numlines = 0
+        for l in blame.split("\n"):
+            if name in l:
+                numlines += 1
+        results.append([name, numlines, str(round((float(numlines) / total) * 100.0, 1)) + "%"])
+
+    results.sort(key=lambda x: x[1])
+    results = reversed(results)
+
+    print "\nTotal lines of code per person out of the total " + str(total) + " lines in the project:\n"
+    print tabulate(results, headers=["name", "lines", "%"], tablefmt='orgtbl')
+
+def lines_per_commit(FILETYPES):
+    authors = {}
+
+    gitlog = os.popen("git log --stat").read()
+    commit_stats = re.split(r"(commit [0-9,a-f]{40})", gitlog)
+
+    commit_hashes = re.findall(r"(commit [0-9,a-f]{40})", gitlog)
+
+    # i = 0
+    # for hash in commit_hashes:
+    #     commit_stats[i] = hash + commit_stats[i]
+
+
+    commits = []
+
+    i = 0
+    while i < len(commit_stats) - 1:
+        commits.append(commit_stats[i - 1] + commit_stats[i])
+        i += 2
+
+    # because instead of doing the above properly, I'm hacking this together
+    del commits[0]
+
+    commit_dict = {}
+
+    for c in commits:
+        lines = 0
+        split_msg = c.split("\n")
+
+        if len(split_msg) < 2:
+            continue
+
+        author = get_author(split_msg[0].split(" ")[1][0:40])
+
+        hash = split_msg[0].split(" ")[1]
+
+        for s in split_msg[5:len(split_msg)]:
+            if "MERGE" in s.upper():
+                break
+
+            lines = s.replace(" ", "").split("|")
+            if len(lines) == 2:
+                if "Bin" not in lines[1] and is_valid_filetype(lines[0]):
+                    #commit_dict[hash] = [author, re.match("[0-9]+", lines[1]).group()]
+                    numlines = int(re.match("[0-9]+", lines[1]).group())
+                    if hash in commit_dict:
+                        commit_dict[hash][0] = author
+                        commit_dict[hash][1] += numlines
+                    else:
+                        commit_dict[hash] = [author, numlines]
+
+    return commit_dict
+
+
+def total_additions_deletions(FILETYPES):
+    commit_dict = lines_per_commit(FILETYPES)
+
+    authors = {}
+
+    for hash in commit_dict:
+        author = commit_dict[hash][0]
+        lines = commit_dict[hash][1]
+        if author in authors:
+            authors[author] += lines
+        else:
+            authors[author] = lines
+
+    tablist = []
+    for a in authors:
+        print a
+        tablist.append([a, authors[a]])
+
+    tablist.sort(key=lambda x: x[1])
+    tablist = reversed(tablist)
+
+    print "\n\nSum of all additions and deletions:\n"
+    print tabulate(tablist, headers=["name", "add/del"], tablefmt='orgtbl')
+
+
+def avg_lines_per_commit(FILETYPES):
+    commits = lines_per_commit(FILETYPES)
+
+    result = {}
+
+    for commit in commits:
+        author = commits[commit][0]
+        numlines = commits[commit][1]
+
+        if author in result:
+            result[author][0] += 1
+            result[author][1] += numlines
+        else:
+            result[author] = [1, numlines]
+
+    tablist = []
+    for r in result:
+        num_commits = result[r][0]
+        num_lines = result[r][1]
+        tablist.append([r, num_commits, num_lines, round(float(num_lines) / num_commits, 1)])
+
+    tablist.sort(key=lambda x: x[3])
+
+    print "\n\nNumber of commits, additions/deletions and lines/commit:\n"
+    print tabulate(tablist, headers=["name", "commits", "add+del", "l/c"], tablefmt='orgtbl')
+
+
+def is_correct_commit_msg(msg):
+    # First letter must be capital
+    if msg[0] == msg[0].lower():
+        return False
+
+    # Last character cannot be punctuation
+    last_c = msg[len(msg) - 1]
+    if last_c in "!?.,(":
+        return False
+
+    # Second letter cannot be caps (prevents all caps msgs)
+    if msg[1] == msg[1].upper():
+        return False
+
+    # First word must be imperative (can't be checked with 100% certainty)
+    first_w = msg.split(" ")[0]
+    if first_w[len(first_w) - 2] + first_w[len(first_w) - 1] == "ed" and \
+            first_w not in ["Need"]:
+        return False
+
+    # Message must not be longer than 50 characters
+    if len(msg) > 50:
+        return False
+
+    return True
+
+
+def get_author(hash):
+    raw = os.popen("git log " + hash + " | head -n 4").read()
+    raw = raw.split("\n")
+    for line in raw:
+        if line.startswith("Author"):
+            return line.split(": ")[1].split("<")[0]
+
+def get_message(hash):
+    pass
+
+def wrong_commit_msgs(NAMES):
+    # commits_raw = os.popen("git log --oneline | grep -v Merge").read().split("\n")
+    #
+    # commits = {} # {hash: msg}
+    #
+    # for c in commits_raw:
+    #     splitc = c.split(" ")
+    #
+    #     if len(splitc) <= 1:
+    #         continue
+    #
+    #     hash = splitc[0]
+    #     msg = " ".join(splitc[1:])
+    #     commits[hash] = msg
+
+    commits = {} # {hash: msg}
+
+    hashes = map(str.strip, os.popen("git log | grep commit").read().split("commit"))
+
+    for hash in hashes:
+        print hash
+
+    commits_raw = os.popen("git log | grep \"    \\|commit\"").read()
+
+    return 0
+
+    for c in commits_raw:
+        if "Merge" in c:
+            continue
+        lines = c.split("\n")
+
+        strmsg = ""
+        for l in lines[1:]:
+            strmsg += l.strip() + "\n"
+
+        commits[lines[0]] = strmsg
+
+    for c in commits:
+        print c, commits[c]
+    # je was bezig de volledige commit message netjes te krijgen zodat je ook op andere
+    # regels kan checken wat betreft de body en subject en alles
+
+    authors = {} # {name: [good, bad]}
+
+    for name in NAMES:
+        authors[name] = [0, 0]
+
+    for commit in commits:
+        msg = commits[commit]
+        author = get_author(commit)
+
+        if not is_correct_commit_msg(msg):
+            authors[author][1] += 1
+        else:
+            authors[author][0] += 1
+
+    tablist = []
+    for a in authors:
+        correct = authors[a][0]
+        wrong =  authors[a][1]
+        if wrong == 0:
+            wrong = 0.0001
+        tablist.append([a, correct, round(wrong, 0), round(float(correct) / wrong, 2)])
+
+    tablist.sort(key=lambda x: x[3])
+    tablist = reversed(tablist)
+
+    print "\n\nNumber of correct commits, incorrect commits, and ratio (higher is better):"
+    print "Since the correctness of a commit message depends on some language rules, this occasionally gives some false positives\n"
+    print tabulate(tablist, headers=["name", "correct", "wrong", "ratio"], tablefmt='orgtbl')
+
+
+# -----------
+# Preparation
+# -----------
+
+if not os.popen("git rev-parse --is-inside-work-tree").read().startswith("true"):
+    sys.exit()
+
+#if "not a git repository" in os.popen("git log").read():
+#    print
+
+NAMES = []
+
+for author in os.popen("git log | grep Author").read().split("\n"):
+    name = ""
+    try:
+        name = author.split(": ")[1].split("<")[0].encode('ascii', 'ignore')
+    except:
+        continue
+
+    if name not in NAMES:
+        NAMES.append(name)
+
+
+# ---------
+# Execution
+# ---------
+
+#contrib_percentage(NAMES, FILETYPES)
+#total_additions_deletions(FILETYPES)
+#avg_lines_per_commit(FILETYPES)
+wrong_commit_msgs(NAMES)

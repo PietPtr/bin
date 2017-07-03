@@ -1,0 +1,10 @@
+#!/bin/bash
+
+change-wallpaper | ts >> ~/.wallpaper_log
+sleep 45
+
+while [ 0 -lt 1 ]
+do
+    change-wallpaper | ts >> ~/.wallpaper_log
+    sleep 1800
+done

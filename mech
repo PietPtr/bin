@@ -1,0 +1,7 @@
+#!/bin/bash
+
+xinput list
+
+read -p "Select laptop kb ID: " kb
+
+xinput float $kb

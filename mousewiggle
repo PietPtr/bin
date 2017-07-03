@@ -1,0 +1,10 @@
+#!/bin/bash
+
+while [ 0 -lt 1 ]
+do
+xdotool mousemove_relative 1 0
+sleep 1
+xdotool mousemove_relative -- -1 0
+echo "wiggle"
+sleep 300
+done

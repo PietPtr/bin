@@ -1,0 +1,40 @@
+#!/bin/bash
+
+#PID=$(pgrep gnome-session)
+#export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS /proc/$PID/environ|cut -d= -f2-)
+
+cd /home/pieter/Pictures/MarsView
+
+if [ ! -f /home/pieter/.config/marsview ]; then
+  FILE=`ls | sort -R | grep -v mars | tail -1`
+  echo "No config file found, using: $FILE"
+  echo "$FILE" >  /home/pieter/.config/marsview
+  YCRD=0
+  echo "$YCRD" >> /home/pieter/.config/marsview
+else
+  FILE=`cat /home/pieter/.config/marsview | head -1`
+  YCRD=`cat /home/pieter/.config/marsview | tail -1`
+  YMAX=`identify -format "%[fx:h]" $FILE`
+  echo "Y max = $YMAX"
+  if (("$YCRD" + 1080 > "$YMAX")); then
+    echo "Reached end of image"
+    rm /home/pieter/.config/marsview
+    /home/pieter/bin/mars-wallpaper
+    exit
+  fi
+fi
+
+echo "File:         $FILE"
+echo "Y Coordinate: $YCRD"
+
+# crop image
+convert $FILE -crop 1920x1080+0+$YCRD mars.png
+YCRD=$(($YCRD+270))
+
+echo "Y Coordinate: $YCRD"
+
+# update config
+echo "$FILE" >  /home/pieter/.config/marsview
+echo "$YCRD" >> /home/pieter/.config/marsview
+
+nitrogen --restore

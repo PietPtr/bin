@@ -1,0 +1,17 @@
+#!/bin/bash
+
+OUT=$(curl -s http://zijnermensenindebastille.vck.tv/staal -m 2)
+LEN=$(echo $OUT | wc -c)
+
+#echo $LEN
+
+if [ $LEN -gt 10 ]; then
+    exit 0
+fi
+
+if [ "$OUT" -eq "0" ]; then
+    echo
+else
+    echo $OUT
+fi
+

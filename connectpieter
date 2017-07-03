@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ssh pieter@89.98.230.65 -p 50050
