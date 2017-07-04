@@ -169,6 +169,9 @@ def avg_lines_per_commit(FILETYPES):
 def is_correct_commit_msg(msg):
     subject = msg.split("\n")[0]
 
+    if len(msg) == 0:
+        return "Correct."
+
     # First letter must be capital
     if msg[0] == msg[0].lower():
         return "First letter must be capital."
