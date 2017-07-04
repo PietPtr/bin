@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- encoding: utf8 -*-
 
 # use python 2
 # install tabulate
@@ -12,7 +13,6 @@ import os
 import re
 import sys
 from tabulate import tabulate
-import operator
 import argparse
 
 
@@ -167,12 +167,14 @@ def avg_lines_per_commit(FILETYPES):
 
 
 def is_correct_commit_msg(msg):
+    subject = msg.split("\n")[0]
+
     # First letter must be capital
     if msg[0] == msg[0].lower():
         return "First letter must be capital."
 
     # Last character cannot be punctuation
-    last_c = msg[len(msg) - 1]
+    last_c = subject[len(subject) - 1]
     if last_c in "!?.,(":
         return "Last character must not be punctuation."
 
