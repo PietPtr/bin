@@ -18,11 +18,16 @@ import argparse
 
 # "Configuration", because the interpreter is a better config file reader than
 # one that I will ever write.
-FILETYPES = [".py", ".java", ".jsp", ".sql", ".tag", ".md"]
+FILETYPES = [".py", ".java", ".jsp", ".sql", ".tag", ".md", ".sln"]
+FRONTEND = [".jsp"]
+BACKEND = [".java"]
 
 # --------------
 # Stat functions
 # --------------
+
+def sh(command):
+    return os.popen(command + " 2>/dev/null").read()
 
 def is_valid_filetype(file):
     for ft in FILETYPES:
@@ -34,7 +39,7 @@ def contrib_percentage(names, filetypes):
     files = []
 
     for ft in filetypes:
-        files += os.popen("find . -type f -name \"*" + ft + "\"").read().split("\n")
+        files += sh("find . -type f -name \"*" + ft + "\"").split("\n")
 
     files = filter(None, files)
 
@@ -42,12 +47,16 @@ def contrib_percentage(names, filetypes):
 
     for f in files:
         command = "git blame " + f
-        blame += os.popen(command).read()
+        blame += sh(command)
 
     total = len(blame.split("\n"))
 
-    results = []
+    blame_contrib_parser(blame, names, total)
+    front_back_parser(files, names)
 
+# parses git blame output to count output
+def blame_contrib_parser(blame, names, total):
+    results = []
     for name in names:
         numlines = 0
         for l in blame.split("\n"):
@@ -60,11 +69,82 @@ def contrib_percentage(names, filetypes):
 
     print "\n[-dc] Total lines of code per person out of the total " + str(total) + " lines in the project:\n"
     print tabulate(results, headers=["name", "lines", "%"], tablefmt='orgtbl')
+    return results
+
+def front_back_parser(files, names):
+    fullstack = {} # {author: [front, end]}
+
+    for name in names:
+        fullstack[name] = [0, 0]
+
+    total_front = 0
+    total_back = 0
+
+    for f in files:
+        blame = sh("git blame " + f)
+
+        type = -1 # unknown
+
+
+        for filetype in FRONTEND:
+            if filetype in f:
+                type = 0 # frontend
+                total_front += len(blame.split("\n"))
+        for filetype in BACKEND:
+            if filetype in f:
+                type = 1 # backend
+                total_back += len(blame.split("\n"))
+
+
+        if type is -1:
+            #print f,("is neither frontend nor backend.");
+            continue
+
+        for line in blame.split("\n"):
+            for name in names:
+                if name in line:
+                    fullstack[name][type] += 1
+
+    tablist = []
+    for author in fullstack:
+        front_share = round((fullstack[author][0] / (fullstack[author][0] + \
+            float(fullstack[author][1]))) * 100, 2)
+
+        tablist.append([author, fullstack[author][0], front_share, \
+            fullstack[author][1], 100 - front_share, get_dev_type(front_share)])
+
+    tablist.sort(key=lambda x: x[4])
+
+    total_full = float(total_back + total_front)
+    print "\nYour project is", total_back, \
+        "lines (" , round((total_back / total_full) * 100, 2), \
+        "% ) backend and", total_front, \
+        "lines (", round((total_front / total_full) * 100, 2), "% ) frontend.",\
+        "\nThis is how those lines are distributed over the contributors:\n"
+
+    print tabulate(tablist, headers=["name", "frontend", "%", "backend", "%", "type"], tablefmt='orgtbl')
+
+
+def get_dev_type(front_share):
+    if front_share >= 80 and front_share <= 100:
+        return "Frontend"
+
+    if front_share >= 60 and front_share <= 80:
+        return "Mostly frontend"
+
+    if front_share >= 40 and front_share <= 60:
+        return "Full stack"
+
+    if front_share >= 20 and front_share <= 40:
+        return "Mostly backend"
+
+    if front_share >= 0  and front_share <= 20:
+        return "Backend"
 
 def lines_per_commit(FILETYPES):
     authors = {}
 
-    gitlog = os.popen("git log --stat").read()
+    gitlog = sh("git log --stat")
     commit_stats = re.split(r"(commit [0-9,a-f]{40})", gitlog)
 
     commit_hashes = re.findall(r"(commit [0-9,a-f]{40})", gitlog)
@@ -312,7 +392,19 @@ parser.add_argument("-dt", "--disable-totals",
 parser.add_argument("-da", "--disable-average",
     help="disable average lines per commit stat", action="store_true")
 parser.add_argument("-dm", "--disable-messages",
-    help="disabel message analyzer", action="store_true")
+    help="disable message analyzer", action="store_true")
+
+parser.add_argument("-c", "--enable-contrib",
+    help="enable contribution to end product percentage stat", action="store_true")
+parser.add_argument("-t", "--enable-totals",
+    help="enable total additions and deletions stat", action="store_true")
+parser.add_argument("-a", "--enable-average",
+    help="enable average lines per commit stat", action="store_true")
+parser.add_argument("-m", "--enable-messages",
+    help="enable message analyzer", action="store_true")
+
+parser.add_argument("-f", "--fullstack",
+    help="shows how much everyone contributed to the front and backend", action="store_true")
 
 args = parser.parse_args()
 
@@ -340,15 +432,26 @@ for author in os.popen("git log | grep Author").read().split("\n"):
 # ---------
 # Execution
 # ---------
+show_all = False
+for arg in vars(args):
+    if "enable" in arg or "disable" in arg:
+        show_all = show_all or getattr(args, arg)
 
-if not args.disable_contrib:
+show_all = not show_all
+
+do_contrib = (not args.disable_contrib and args.enable_contrib) or show_all
+do_totals = (not args.disable_totals and args.enable_totals) or show_all
+do_average = (not args.disable_average and args.enable_average) or show_all
+do_messages = (not args.disable_messages and args.enable_messages) or show_all
+
+if do_contrib:
     contrib_percentage(NAMES, FILETYPES)
 
-if not args.disable_totals:
+if do_totals:
     total_additions_deletions(FILETYPES)
 
-if not args.disable_average:
+if do_average:
     avg_lines_per_commit(FILETYPES)
 
-if not args.disable_messages:
+if do_messages:
     wrong_commit_msgs(NAMES)
