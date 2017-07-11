@@ -107,20 +107,23 @@ def front_back_parser(files, names):
 
     tablist = []
     for author in fullstack:
+        back_lines = fullstack[author][1] * (total_front / float(total_back))
         front_share = round((fullstack[author][0] / (fullstack[author][0] + \
-            float(fullstack[author][1]))) * 100, 2)
+            float(back_lines))) * 100, 2)
 
         tablist.append([author, fullstack[author][0], front_share, \
             fullstack[author][1], 100 - front_share, get_dev_type(front_share)])
 
-    tablist.sort(key=lambda x: x[4])
+    tablist.sort(key=lambda x: x[2])
 
     total_full = float(total_back + total_front)
     print "\nYour project is", total_back, \
         "lines (" , round((total_back / total_full) * 100, 2), \
         "% ) backend and", total_front, \
         "lines (", round((total_front / total_full) * 100, 2), "% ) frontend.",\
-        "\nThis is how those lines are distributed over the contributors:\n"
+        "\nThis is how those lines are distributed over the contributors:\n",\
+        "  (The backend contributions are scaled to the size of the frontend, this eliminates the bias\n"\
+        "  to the larger of the two components.)\n"
 
     print tabulate(tablist, headers=["name", "frontend", "%", "backend", "%", "type"], tablefmt='orgtbl')
 
@@ -148,10 +151,6 @@ def lines_per_commit(FILETYPES):
     commit_stats = re.split(r"(commit [0-9,a-f]{40})", gitlog)
 
     commit_hashes = re.findall(r"(commit [0-9,a-f]{40})", gitlog)
-
-    # i = 0
-    # for hash in commit_hashes:
-    #     commit_stats[i] = hash + commit_stats[i]
 
 
     commits = []
@@ -279,14 +278,14 @@ def is_correct_commit_msg(msg):
 
 
 def get_author(hash):
-    raw = os.popen("git log " + hash + " | head -n 4").read()
+    raw = sh("git log " + hash + " | head -n 4")
     raw = raw.split("\n")
     for line in raw:
         if line.startswith("Author"):
             return line.split(": ")[1].split("<")[0]
 
 def get_message(hash):
-    msg = os.popen("git log " + hash + " -n 1 | grep \"    \"").read()
+    msg = sh("git log " + hash + " -n 1 | grep \"    \"")
     return msg.replace("    ", "")
 
 def wrong_commit_msgs(NAMES):
@@ -312,7 +311,7 @@ def wrong_commit_msgs(NAMES):
     mistakes["First word must be imperative."]                      = 0
     mistakes["Subject line must not be longer than 50 characters."] = 0
 
-    hashes = map(str.strip, os.popen("git log --oneline | grep -v Merge").read().split("\n"))
+    hashes = map(str.strip, sh("git log --oneline | grep -v Merge").split("\n"))
 
     for i in range(0, len(hashes)):
         hashes[i] = hashes[i].split(" ")[0]
@@ -408,13 +407,11 @@ parser.add_argument("-f", "--fullstack",
 
 args = parser.parse_args()
 
-print ""
-
-if not os.popen("git rev-parse --is-inside-work-tree").read().startswith("true"):
+if not sh("git rev-parse --is-inside-work-tree").startswith("true"):
+    print "Not in a git repository."
     sys.exit()
 
-#if "not a git repository" in os.popen("git log").read():
-#    print
+print ""
 
 NAMES = []
 
