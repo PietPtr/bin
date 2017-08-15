@@ -1,0 +1,48 @@
+#!/usr/bin/python
+import os, sys, math
+
+def num_to_col(num):
+    # 1   A
+    # 2   B
+    # 3   C
+    # ..
+    # 24  X
+    # 25  Y
+    # 26  Z
+    # 27  AA
+    # 28  AB
+    # 29  AC
+    # 30  AD
+
+    base26 = os.popen("echo 'obase=27; " + str(num) + "' | bc").read().strip().split(" ")
+
+    letters = ""
+
+    ct = 0
+    for digit in base26:
+        if digit == "00" or digit == "0":
+            letters += "A"
+        elif ct >= 1:
+            letters += chr(int(digit) + 65)
+        else:
+            letters += chr(int(digit) + 64)
+
+        ct += 1
+
+    return (letters)
+
+def find_name(letters):
+    letters = letters.lower()
+
+    return os.popen("cat /usr/share/dict/words | grep -i \"^" + letters + "$*\"" + \
+            "| grep -v \"ly\\|\'s\" | shuf -n 10").read()
+
+if int(sys.argv[1]) > 727:
+    print("this doesn't work for versions over 727 because it's all one dirty hack")
+    sys.exit()
+
+print(num_to_col(sys.argv[1]))
+print(find_name(num_to_col(sys.argv[1])))
+
+# for i in range(1, 740):
+#     num_to_col(i)#print(i, chr(i + 64), int(math.log(i, 26)))
