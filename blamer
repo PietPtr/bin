@@ -52,7 +52,8 @@ def contrib_percentage(names, filetypes):
     total = len(blame.split("\n"))
 
     blame_contrib_parser(blame, names, total)
-    front_back_parser(files, names)
+    if (args.fullstack):
+        front_back_parser(files, names)
 
 # parses git blame output to count output
 def blame_contrib_parser(blame, names, total):
@@ -104,6 +105,10 @@ def front_back_parser(files, names):
             for name in names:
                 if name in line:
                     fullstack[name][type] += 1
+
+    if total_front is 0 and total_back is 0:
+        print "\nNo frontend or backend lines found :("
+        return
 
     tablist = []
     for author in fullstack:
