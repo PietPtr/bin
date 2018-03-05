@@ -4,7 +4,7 @@ from __future__ import division
 import time
 import os
 
-rawCommand = os.popen("df | grep '/dev/nvme0n1p5'").read().split(' ')
+rawCommand = os.popen("df | grep '/dev/nvme0n1p4'").read().split(' ')
 
 sizeIndex = 0
 usedIndex = 0

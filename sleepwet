@@ -1,0 +1,9 @@
+#!/bin/bash
+
+num=$(curl -s https://sleepwet.nl/ | grep getekend | grep -o "[0-9]\{3\}.[0-9]\{3\}")
+
+if [[ $num == 3* ]]; then
+    echo $num #"------> $num <------ We did it reddit!"
+else
+    echo $num
+fi

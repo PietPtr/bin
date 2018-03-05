@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [[ $# -ne 3 ]]; then
+    echo "Usage: postcode [street] [number] [city]"
+    exit 1
+fi
+
+result=$(curl -s 'https://www.postnl.nl/api/addressexpress/postalcode' -H 'cookie: CookiePermissionInfo={"LastModifiedDate":"\/Date(1491384737630)\/","ExpirationDate":"\/Date(1522886400000)\/","Allow":true,"CategoryPermission":[{"Category":"Cat.8","Permission":true},{"Category":"Cat.9","Permission":false},{"Category":"Cat.10","Permission":false},{"Category":"Cat.11","Permission":false},{"Category":"Cat.12","Permission":false}]}; ARRAffinity=7ba0ad5cbe17812504a991e9dc44e36ee6f71930ccdf4a6593d8f237e1bf451b; elytis=162548,166599,162570,157563,152449,166358,156213,166450,168197,169173; Language=nl; prevpages=L3Bvc3Rjb2RlLXpvZWtlbi86TkE6TkE=; Ely_vID=ug7v4kbd3mr21q4cmhvjorabevw3w547; ely_cc_answ={"privacy-control-analytics":1,"privacy-control-rtb":1,"privacy-control-social":1,"privacy-control-usabilla":1,"privacy-control-postnl-custom-tags":1,"default":1,"privacy-control-postnl-custom":1}; elytil=163654' -H 'origin: https://www.postnl.nl' -H 'accept-encoding: gzip, deflate, br' -H 'accept-language: en-US,en;q=0.9' -H 'user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/62.0.3202.94 Chrome/62.0.3202.94 Safari/537.36' -H 'content-type: application/x-www-form-urlencoded; charset=UTF-8' -H 'accept: */*' -H 'referer: https://www.postnl.nl/postcode-zoeken/' -H 'authority: www.postnl.nl' -H 'x-requested-with: XMLHttpRequest' -H 'dnt: 1' --data "street=$1&number=$2&addition=&city=$3" --compressed)
+
+
+echo $result | grep -o '[0-9]\{4\}[A-Z]\{2\}' | head -n 1

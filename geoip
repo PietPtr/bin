@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# in case ipinfo.io goes down, try ifconfig.me
+
+curl ipinfo.io/$1

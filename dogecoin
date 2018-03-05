@@ -1,0 +1,6 @@
+#!/bin/bash
+
+price=$(curl -s https://coinmarketcap.com/currencies/dogecoin/ | grep "data-currency-price" | grep -o "[0-9].[0-9]*")
+
+# echo $(echo "$price * 10000" | bc) USD
+echo $price USD/DOGE
