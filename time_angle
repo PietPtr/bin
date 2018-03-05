@@ -12,9 +12,9 @@ seconds = now - midnight
 h = ((seconds / 60.0) / 60)
 m = (seconds - int(h) * 60 * 60) / 60.0
 
-h_angle = round((h % 12) / 12.0 * 360, 2)
-m_angle = round((m / 60.0) * 360, 2)
-s_angle = round(((seconds % 60) / 60.0) * 360, 2)
+h_angle = (h % 12) / 12.0 * 360
+m_angle = (m / 60.0) * 360
+s_angle = ((seconds % 60) / 60.0) * 360
 
 am_pm = "AM"
 if h > 12:
