@@ -1,0 +1,8 @@
+#!/bin/bash
+
+str=$(expr '(' $(date -d 2018/6/15 +%s) - $(date +%s) + 86399 ')' / 86400)
+cantus=$(curl -s https://www.inter-actief.utwente.nl/activities/ | grep -ia Cantus | wc -l)
+vaka=$(expr '(' $(date -d 2018/7/6 +%s) - $(date +%s) + 86399 ')' / 86400)
+str="$vaka/$str/$cantus"
+
+echo -ne "$str"

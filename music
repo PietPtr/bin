@@ -1,0 +1,3 @@
+#!/bin/bash
+
+vlc ~/Music/yt-rip/*.mp3

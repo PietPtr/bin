@@ -2,11 +2,12 @@
 
 import datetime, os
 
+form = "{:3.0f}"
+do_secs = False
+do_mins = False
+
 midnight = float(os.popen("date -d 'today 00:00:00' \"+%s.%N\"").read())
 now = float(os.popen("date \"+%s.%N\"").read())
-
-form = "{:3.0f}"
-
 seconds = now - midnight
 
 h = ((seconds / 60.0) / 60)
@@ -20,4 +21,13 @@ am_pm = "AM"
 if h > 12:
     am_pm = "PM"
 
-print((form + "° " + form + "° " + form + "° {}").format(h_angle, m_angle, s_angle, am_pm))
+
+h_str = (form + "° ").format(h_angle)
+m_str = ""
+if do_mins:
+    m_str = (form + "° ").format(m_angle)
+s_str = ""
+if do_secs:
+    s_str = (form + "° ").format(s_angle)
+
+print((h_str + m_str + s_str + "{}").format(am_pm))
