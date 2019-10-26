@@ -1,0 +1,14 @@
+#!/usr/bin/python3
+
+import json, os
+from pprint import pprint
+
+data = os.popen("curl -s https://radiobox2.omroep.nl/data/radiobox2/nowonair/2.json").read()
+dict = json.loads(data)
+
+artist = dict['results'][0]['songfile']['artist']
+song = dict['results'][0]['songfile']['title']
+
+print(artist + ' - ' + song)
+
+#pprint(json.loads(data))

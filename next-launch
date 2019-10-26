@@ -1,0 +1,13 @@
+#!/usr/bin/python3
+import json, os
+from pprint import pprint
+from datetime import datetime
+
+json = json.loads(os.popen("curl -s https://api.spacexdata.com/v3/launches/upcoming").read())
+
+name = json[0]["mission_name"]
+date = json[0]["launch_date_unix"]
+diff = datetime.utcfromtimestamp(date) - datetime.utcnow()
+#print((datetime.utcfromtimestamp(date) + diff).strftime("%H hours %M minutes %S seconds"))
+
+print(name + ":", (str(diff).split(".")[0])[:-3])
