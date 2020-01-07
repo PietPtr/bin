@@ -1,0 +1,10 @@
+#!/bin/bash
+
+pdf=$(curl -s https://www.utwente.nl/nl/cfm/diensten-abc-bijlages/catering/restaurant-waaier/ | grep "[\:\./0-9a-Z\-]*.pdf" -o | grep "week\-$(date +%-V)" | head -n 1)
+
+wget $pdf -O /tmp/eten.pdf -nv -q
+
+pdf2txt -o /tmp/output.txt /tmp/eten.pdf
+
+cat /tmp/output.txt | grep "Wednesday" -A 14
+
