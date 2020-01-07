@@ -6,5 +6,10 @@ wget $pdf -O /tmp/eten.pdf -nv -q
 
 pdf2txt -o /tmp/output.txt /tmp/eten.pdf
 
-cat /tmp/output.txt | grep "Wednesday" -A 14
+oldlang=$LANG
 
+LANG=en_US
+cat /tmp/output.txt | grep "$(date +%A)" -A 14
+
+LANG=$oldlang
+rm /tmp/output.txt /tmp/eten.pdf
